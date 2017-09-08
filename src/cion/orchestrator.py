@@ -1,7 +1,7 @@
 import asyncio
 
-from common.webhook import interface as webhook
-from common.workq.server import Server
+from cion.common.workq.server import Server
+from cion.common.webhook import interface as webhook
 
 
 async def test():

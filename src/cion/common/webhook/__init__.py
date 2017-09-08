@@ -1,4 +1,4 @@
-from common.workq.task import Interface
+from cion.common.workq.task import Interface
 
 interface = Interface("webhook")
 

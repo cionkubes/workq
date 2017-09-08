@@ -142,7 +142,7 @@ class Pickler:
         t = type(obj)
         f = self.dispatch.get(t)
         if f is not None:
-            await f(self, obj) # Call unbound method with explicit self
+            await f(self, obj)  # Call unbound method with explicit self
             return
 
         # Check private dispatch table if any, or else copyreg.dispatch_table
@@ -153,7 +153,7 @@ class Pickler:
             # Check for a class with a custom metaclass; treat as regular class
             try:
                 issc = issubclass(t, type)
-            except TypeError: # t is not a class (old Boost; see SF #502085)
+            except TypeError:  # t is not a class (old Boost; see SF #502085)
                 issc = False
             if issc:
                 await self.save_global(obj)
@@ -206,7 +206,7 @@ class Pickler:
                     "persistent IDs in protocol 0 must be ASCII strings")
 
     async def save_reduce(self, func, args, state=None, listitems=None,
-                    dictitems=None, obj=None):
+                          dictitems=None, obj=None):
         # This API is called by some subclasses
 
         if not isinstance(args, tuple):
@@ -309,6 +309,7 @@ class Pickler:
 
     async def save_none(self, obj):
         await self.write(NONE)
+
     dispatch[type(None)] = save_none
 
     async def save_bool(self, obj):
@@ -316,6 +317,7 @@ class Pickler:
             await self.write(NEWTRUE if obj else NEWFALSE)
         else:
             await self.write(TRUE if obj else FALSE)
+
     dispatch[bool] = save_bool
 
     async def save_long(self, obj):
@@ -344,6 +346,7 @@ class Pickler:
                 await self.write(LONG4 + pack("<i", n) + encoded)
             return
         await self.write(LONG + repr(obj).encode("ascii") + b'L\n')
+
     dispatch[int] = save_long
 
     async def save_float(self, obj):
@@ -351,15 +354,16 @@ class Pickler:
             await self.write(BINFLOAT + pack('>d', obj))
         else:
             await self.write(FLOAT + repr(obj).encode("ascii") + b'\n')
+
     dispatch[float] = save_float
 
     async def save_bytes(self, obj):
         if self.proto < 3:
-            if not obj: # bytes object is empty
+            if not obj:  # bytes object is empty
                 await self.save_reduce(bytes, (), obj=obj)
             else:
                 await self.save_reduce(codecs.encode,
-                                 (str(obj, 'latin1'), 'latin1'), obj=obj)
+                                       (str(obj, 'latin1'), 'latin1'), obj=obj)
             return
         n = len(obj)
         if n <= 0xff:
@@ -369,6 +373,7 @@ class Pickler:
         else:
             await self.write(BINBYTES + pack("<I", n) + obj)
         await self.memoize(obj)
+
     dispatch[bytes] = save_bytes
 
     async def save_str(self, obj):
@@ -385,12 +390,13 @@ class Pickler:
             obj = obj.replace("\\", "\\u005c")
             obj = obj.replace("\n", "\\u000a")
             await self.write(UNICODE + obj.encode('raw-unicode-escape') +
-                       b'\n')
+                             b'\n')
         await self.memoize(obj)
+
     dispatch[str] = save_str
 
     async def save_tuple(self, obj):
-        if not obj: # tuple is empty
+        if not obj:  # tuple is empty
             if self.bin:
                 await self.write(EMPTY_TUPLE)
             else:
@@ -430,8 +436,8 @@ class Pickler:
             get = self.get(memo[id(obj)][0])
             if self.bin:
                 await write(POP_MARK + get)
-            else:   # proto 0 -- POP_MARK not available
-                await write(POP * (n+1) + get)
+            else:  # proto 0 -- POP_MARK not available
+                await write(POP * (n + 1) + get)
             return
 
         # No recursion.
@@ -443,7 +449,7 @@ class Pickler:
     async def save_list(self, obj):
         if self.bin:
             await self.write(EMPTY_LIST)
-        else:   # proto 0 -- can't use EMPTY_LIST
+        else:  # proto 0 -- can't use EMPTY_LIST
             await self.write(MARK + LIST)
 
         await self.memoize(obj)
@@ -483,7 +489,7 @@ class Pickler:
     async def save_dict(self, obj):
         if self.bin:
             await self.write(EMPTY_DICT)
-        else:   # proto 0 -- can't use EMPTY_DICT
+        else:  # proto 0 -- can't use EMPTY_DICT
             await self.write(MARK + DICT)
 
         await self.memoize(obj)
@@ -546,6 +552,7 @@ class Pickler:
                 await write(ADDITEMS)
             if n < self._BATCHSIZE:
                 return
+
     dispatch[set] = save_set
 
     async def save_frozenset(self, obj):
@@ -569,6 +576,7 @@ class Pickler:
 
         await write(FROZENSET)
         await self.memoize(obj)
+
     dispatch[frozenset] = save_frozenset
 
     async def save_global(self, obj, name=None):
@@ -618,7 +626,7 @@ class Pickler:
             await self.save_reduce(getattr, (parent, lastname))
         elif self.proto >= 3:
             await write(GLOBAL + bytes(module_name, "utf-8") + b'\n' +
-                  bytes(name, "utf-8") + b'\n')
+                        bytes(name, "utf-8") + b'\n')
         else:
             if self.fix_imports:
                 r_name_mapping = _compat_pickle.REVERSE_NAME_MAPPING
@@ -629,7 +637,7 @@ class Pickler:
                     module_name = r_import_mapping[module_name]
             try:
                 await write(GLOBAL + bytes(module_name, "ascii") + b'\n' +
-                      bytes(name, "ascii") + b'\n')
+                            bytes(name, "ascii") + b'\n')
             except UnicodeEncodeError:
                 raise PicklingError(
                     "can't pickle global identifier '%s.%s' using "

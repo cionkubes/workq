@@ -1,13 +1,12 @@
 import asyncio
+import logging
 import socket
 import ssl
-
-import logging
 from collections import defaultdict
 from enum import IntEnum, auto
 from uuid import uuid4
 
-from common.workq.net import Types, Keys, Stream, md5, ok, error, start_work
+from ..net import Types, Keys, Stream, ok, error, start_work
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +58,13 @@ class Server:
         self.loop = asyncio.get_event_loop()
 
     def enable(self, interface):
-        h = md5(interface)
-        self.interfaces[h] = interface
-        self.interfaces_hash.append(h)
+        sig = interface.signature()
+        self.interfaces[sig] = interface
+        self.interfaces_hash.append(sig)
         interface.enable(self)
 
     async def find_worker(self, task):
-        workers = self.clients_supporting[md5(task)]
+        workers = self.clients_supporting[task.signature()]
         try:
             return next(filter(lambda c: c.state == ClientState.IDLE, workers))
         except StopIteration:
@@ -137,7 +136,7 @@ class Server:
             interface = self.interfaces[interface_hash]
 
             for task in interface.tasks.values():
-                self.clients_supporting[md5(task)].append(client)
+                self.clients_supporting[task.signature()].append(client)
 
             await client.stream.send(ok())
         else:

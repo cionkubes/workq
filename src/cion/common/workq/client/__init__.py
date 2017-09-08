@@ -1,10 +1,8 @@
 import asyncio
+import logging
 import socket
 
-import logging
-
-from common.workq.task import md5
-from common.workq.net import supports_interface, Stream, error_guard, Types, Keys, work_result, work_failed
+from ..net import supports_interface, Stream, error_guard, Types, Keys, work_result, work_failed
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ class Orchestrator:
                 interface.is_implemented_guard()
 
                 for task in interface.tasks.values():
-                    self.tasks[md5(task)] = task
+                    self.tasks[task.signature()] = task
 
                 await stream.send(supports_interface(interface))
                 error_guard(await stream.decode())

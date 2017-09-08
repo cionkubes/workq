@@ -1,9 +1,8 @@
-import io
 import asyncio
+import io
 from functools import partial
 
-from common.workq import apickle
-from common.workq.task import md5
+from .. import apickle
 
 
 class Types:
@@ -35,13 +34,13 @@ def error(msg):
 
 
 def supports_interface(interface):
-    return {Keys.TYPE: Types.SUPPORTS, Keys.INTERFACE: md5(interface)}
+    return {Keys.TYPE: Types.SUPPORTS, Keys.INTERFACE: interface.signature()}
 
 
 def start_work(work_id, task, args, kwargs):
     return {
         Keys.TYPE: Types.DO_WORK,
-        Keys.TASK: md5(task),
+        Keys.TASK: task.signature(),
         Keys.WORK_ID: work_id,
         Keys.ARGS: args,
         Keys.KWARGS: kwargs
@@ -67,6 +66,7 @@ def work_failed(work_id, exception):
 def error_guard(response):
     assert response[Keys.TYPE] == Types.RESPONSE, "Expected response type"
     assert not response[Keys.ERROR], response[Keys.MSG]
+
 
 NEWLINE = b'\n'
 
