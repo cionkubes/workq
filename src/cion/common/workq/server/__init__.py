@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import socket
 import ssl
 from collections import defaultdict
@@ -8,7 +7,7 @@ from uuid import uuid4
 
 from ..net import Types, Keys, Stream, ok, error, start_work
 
-logger = logging.getLogger(__name__)
+from logzero import logger
 
 
 class Client:
@@ -51,11 +50,25 @@ class ClientState(IntEnum):
 
 
 class Server:
-    def __init__(self):
+    def __init__(self, hc_sleep=5):
         self.interfaces = {}
         self.interfaces_hash = []
         self.clients_supporting = defaultdict(lambda: [])
         self.loop = asyncio.get_event_loop()
+        self.waiting_tasks = []
+        self.alive = True
+        self.health_check_timeout = hc_sleep
+
+        asyncio.ensure_future(self.health_check(), loop=self.loop)
+
+    async def health_check(self):
+        while self.alive:
+            await asyncio.sleep(self.health_check_timeout)
+
+            num_waiting_tasks = len(self.waiting_tasks)
+            if num_waiting_tasks > 0:
+                logger.warning(f"{num_waiting_tasks} task(s) without any clients implementing their "
+                               "interface.")
 
     def enable(self, interface):
         sig = interface.signature()
@@ -68,13 +81,9 @@ class Server:
         try:
             return next(filter(lambda c: c.state == ClientState.IDLE, workers))
         except StopIteration:
-            while len(workers) <= 0:
-                logger.info(f"No client implementing task {task.name}, waiting.")
-                await asyncio.sleep(1)
-
-            worker = workers.pop(0)
-            workers.append(worker)
-            return worker
+            fut = self.loop.create_future()
+            self.waiting_tasks.append((task, fut))
+            return await fut
 
     def start_task(self, task, args, kwargs):
         async def start():

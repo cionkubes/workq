@@ -1,10 +1,8 @@
 import asyncio
-import logging
 import socket
+from logzero import logger
 
 from ..net import supports_interface, Stream, error_guard, Types, Keys, work_result, work_failed
-
-logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
