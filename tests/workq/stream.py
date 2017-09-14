@@ -1,106 +1,46 @@
-import asyncio
-import random
-import socket
-import string
 from itertools import islice
 
+import asyncio
 import pytest
-
-from cion.common.workq.net import Stream
-
-
-def random_int():
-    return random.randint(-2**32, 2**32)
-
-
-def random_float():
-    return random.uniform(-2**32, 2**32)
-
-
-def random_complex():
-    return complex(random_float(), random_float())
-
-
-def random_bool():
-    return random.choice([True, False])
-
-
-def random_none():
-    return None
-
-
-def random_immutable():
-    return random.choice(random_immutable_fns)()
-
-
-def random_string():
-    size = random.randint(0, 50)
-
-    return ''.join(random.choices(string.printable, k=size))
-
-
-def random_bytes():
-    size = random.randint(0, 50)
-    bx = [bytes([byte]) for byte in range(0, 255)]
-
-    return b''.join(random.choices(bx, k=size))
-
-
-def random_tuple():
-    size = int(random.triangular(0, 5, 1))
-
-    return tuple(random_immutable() for _ in range(size))
-
-
-def random_dict():
-    size = int(random.triangular(0, 5, 1))
-
-    return {random_immutable(): random_object() for _ in range(size)}
-
-
-def random_list():
-    size = int(random.triangular(0, 5, 1))
-
-    return [random_object() for _ in range(size)]
-
-
-def random_object():
-    return random.choice(random_fns)()
-
-
-random_immutable_fns = [random_string, random_int, random_float, random_bytes, random_bool, random_none, random_complex, random_tuple]
-random_fns = [random_dict, random_list, random_immutable]
-
-
-def object_gen():
-    while True:
-        yield random_object()
-
-@pytest.fixture
-def object():
-    return random_object()
-
-
-@pytest.fixture
-def object_generator():
-    return object_gen()
-
-
-@pytest.fixture
-def streampair():
-    s1, s2 = socket.socketpair()
-    s1.setblocking(False)
-    s2.setblocking(False)
-
-    return Stream(s1), Stream(s2)
+from cion.common.workq.apickle import dump, load
 
 
 @pytest.mark.asyncio
-async def test_pickling(streampair):
+async def test_readline(streampair, event_loop):
     r, w = streampair
 
-    obj = {u"Test": 32, u'res': {0x3: [4, 5, 7]}}
+    lines = [b'nHuJONnMFE\n', b'W66tOBAfrw943gh\n', b'SyDMv143gaGE#%@274577&$TTHU\n']
 
-    read_task = r.decode()
-    await w.send(obj)
-    assert obj == await read_task
+    asyncio.ensure_future(w.write(b''.join(lines)), loop=event_loop)
+
+    for line in lines:
+        assert line == await r.readline()
+
+
+@pytest.mark.asyncio
+async def test_read_exactly(streampair, event_loop):
+    r, w = streampair
+
+    strings = [b'nHuJONnMFE', b'W66tOBAfrw943gh', b'SyDMv143gaGE#%@274577&$TTHU']
+
+    asyncio.ensure_future(w.write(b''.join(strings)), loop=event_loop)
+
+    for line in strings:
+        assert line == await r.read_exactly(len(line))
+
+
+@pytest.mark.asyncio
+async def test_many_separate_streams(streampair_generator, objects):
+    for obj, streampair in zip(objects, streampair_generator):
+        r, w = streampair
+        await dump(obj, w)
+        assert obj == await load(r)
+
+
+@pytest.mark.asyncio
+async def test_many_same_stream(streampair, objects):
+    r, w = streampair
+
+    for obj in objects:
+        await dump(obj, w)
+        assert obj == await load(r)

@@ -197,7 +197,8 @@ class Unpickler:
     dispatch[FLOAT[0]] = load_float
 
     async def load_binfloat(self):
-        self.append(unpack('>d', await self.read(8))[0])
+        self.append(unpack('>d', await
+        self.read(8))[0])
 
     dispatch[BINFLOAT[0]] = load_binfloat
 
