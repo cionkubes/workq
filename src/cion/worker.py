@@ -1,7 +1,7 @@
 import asyncio
 
-from cion.common.workq.client import Orchestrator
 from cion.common.webhook import webhook
+from cion.common.workq.worker import Orchestrator
 
 
 @webhook.hello.implement

@@ -3,7 +3,8 @@ import socket
 import string
 
 import pytest
-from cion.common.workq.net import Stream
+
+from cion.common.workq.net.stream import Stream
 
 
 class Wrapper:

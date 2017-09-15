@@ -1,6 +1,6 @@
 import pytest
 
-from cion.common.workq.task import Interface
+from cion.common.workq.interface import Interface
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def interface():
     return interface
 
 
-def test_diffrent_nr_args(interface):
+def test_different_nr_args(interface):
     with pytest.raises(AssertionError):
         @interface.arg2.implement
         def implementation():

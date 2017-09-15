@@ -1,7 +1,7 @@
-from itertools import islice
-
 import asyncio
+
 import pytest
+
 from cion.common.workq.apickle import dump, load
 
 

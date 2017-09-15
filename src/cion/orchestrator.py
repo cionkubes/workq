@@ -1,9 +1,9 @@
 import asyncio
 
-from cion.common.workq.server import Server
-from cion.common.webhook import webhook
-
 from logzero import logger
+
+from cion.common.webhook import webhook
+from cion.common.workq.orchestrator import Server
 
 
 async def test():

@@ -1,6 +1,6 @@
 import pytest
 
-from cion.common.workq.task import Interface
+from cion.common.workq.interface import Interface
 
 
 @pytest.fixture

@@ -1,50 +1,6 @@
-import hashlib
 from inspect import signature
 
-
-class Signature:
-    @property
-    def signature(self):
-        m = hashlib.md5()
-
-        for sig in self.signature_generator():
-            m.update(sig)
-
-        return m.hexdigest()
-
-    def signature_generator(self):
-        raise NotImplementedError()
-
-
-class Interface(Signature):
-    def __init__(self, name):
-        self.name = name
-        self.tasks = {}
-        self.server = None
-
-    def task(self, fn):
-        task = Task(fn.__name__, signature(fn), self)
-
-        sig = task.signature
-        assert sig not in self.tasks, "Task with same signature already exists in this interface."
-
-        self.tasks[sig] = task
-        setattr(self, task.name, task)
-
-    def signature_generator(self):
-        # The interface name is included in each task signature, so to need to yield it here
-        for task in self.tasks.values():
-            yield from task.signature_generator()
-
-    def is_implemented_guard(self):
-        for task in self.tasks.values():
-            assert task.implementation, f"Task {task.name} is not implemented"
-
-        return True  # TODO
-
-    def enable(self, server):
-        assert self.server is None, "Interface already enabled"
-        self.server = server
+from .sig import Signature
 
 
 class Task(Signature):
