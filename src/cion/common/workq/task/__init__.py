@@ -3,6 +3,7 @@ from inspect import signature
 
 
 class Signature:
+    @property
     def signature(self):
         m = hashlib.md5()
 
@@ -10,6 +11,9 @@ class Signature:
             m.update(sig)
 
         return m.hexdigest()
+
+    def signature_generator(self):
+        raise NotImplementedError()
 
 
 class Interface(Signature):
@@ -21,13 +25,14 @@ class Interface(Signature):
     def task(self, fn):
         task = Task(fn.__name__, signature(fn), self)
 
-        sig = task.signature()
+        sig = task.signature
         assert sig not in self.tasks, "Task with same signature already exists in this interface."
 
         self.tasks[sig] = task
         setattr(self, task.name, task)
 
     def signature_generator(self):
+        # The interface name is included in each task signature, so to need to yield it here
         for task in self.tasks.values():
             yield from task.signature_generator()
 
@@ -50,9 +55,15 @@ class Task(Signature):
 
         self.args = signature.parameters
 
+    @property
+    def pretty_name(self):
+        return f"{self.member_of.name}.{self.name}({', '.join(self.args)})"
+
     def signature_generator(self):
-        yield self.name.encode()
         yield self.member_of.name.encode()
+        yield self.name.encode()
+
+        yield from map(lambda param: bytes(param.kind), self.args.values())
 
     def valid_implementation_guard(self, fn):
         other_args = signature(fn).parameters

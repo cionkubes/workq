@@ -33,13 +33,13 @@ def error(msg):
 
 
 def supports_interface(interface):
-    return {Keys.TYPE: Types.SUPPORTS, Keys.INTERFACE: interface.signature()}
+    return {Keys.TYPE: Types.SUPPORTS, Keys.INTERFACE: interface.signature}
 
 
 def start_work(work_id, task, args, kwargs):
     return {
         Keys.TYPE: Types.DO_WORK,
-        Keys.TASK: task.signature(),
+        Keys.TASK: task.signature,
         Keys.WORK_ID: work_id,
         Keys.ARGS: args,
         Keys.KWARGS: kwargs
@@ -206,7 +206,7 @@ class Stream:
     read = read_exactly
 
     async def readline(self):
-        write = self.buffer.write
+        buf_write = self.buffer.write
         read = self._read_nolock
         limit = self.buffer_size
         result = bytearray()
@@ -220,7 +220,7 @@ class Stream:
                     result.extend(data)
                 else:
                     result.extend(data[:i+1])
-                    await write(data[i+1:])
+                    await buf_write(data[i+1:])
                     break
 
             return bytes(result)

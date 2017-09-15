@@ -17,6 +17,7 @@ class Client:
         self.stream = stream
         self.state = ClientState.IDLE
         self.futures = {}
+        self.supported_interfaces = []
 
     async def start(self, task, args, kwargs):
         self.state = ClientState.WORKING
@@ -27,9 +28,16 @@ class Client:
         await self.stream.send(start_work(work_id, task, args, kwargs))
         return self.futures[work_id]
 
+    def supports(self, interface):
+        self.supported_interfaces.append(interface)
+
     async def work_done(self, msg):
-        future = self.futures[msg[Keys.WORK_ID]]
-        del self.futures[msg[Keys.WORK_ID]]
+        try:
+            future = self.futures.pop(msg[Keys.WORK_ID])
+        except KeyError:
+            logger.error(f"Worker finished working on a task, but no such work was started by this server instance.")
+            logger.info(", ".join(map(lambda item: f"{item[0]}: {item[1]}", msg.items())))
+            return
 
         if len(self.futures) <= 0:
             self.state = ClientState.IDLE
@@ -43,6 +51,9 @@ class Client:
         else:
             future.set_result(msg[Keys.WORK_RESULT])
 
+    def disconnected(self):
+        pass
+
 
 class ClientState(IntEnum):
     IDLE = auto()
@@ -54,8 +65,9 @@ class Server:
         self.interfaces = {}
         self.interfaces_hash = []
         self.clients_supporting = defaultdict(lambda: [])
+        self.clients = []
         self.loop = asyncio.get_event_loop()
-        self.waiting_tasks = []
+        self.waiting_tasks = defaultdict(lambda: [])
         self.alive = True
         self.health_check_timeout = hc_sleep
 
@@ -65,33 +77,36 @@ class Server:
         while self.alive:
             await asyncio.sleep(self.health_check_timeout)
 
-            num_waiting_tasks = len(self.waiting_tasks)
-            if num_waiting_tasks > 0:
-                logger.warning(f"{num_waiting_tasks} task(s) without any clients implementing their "
-                               "interface.")
+            for tasks in self.waiting_tasks.values():
+                num_waiting_tasks = len(tasks)
+                first_task, _ = tasks[0]
+                if num_waiting_tasks > 0:
+                    logger.warning(f"{num_waiting_tasks} {first_task.pretty_name} task(s) without any clients "
+                                   "implementing their interface.")
 
     def enable(self, interface):
-        sig = interface.signature()
-        self.interfaces[sig] = interface
-        self.interfaces_hash.append(sig)
+        self.interfaces[interface.signature] = interface
+        self.interfaces_hash.append(interface.signature)
         interface.enable(self)
 
     async def find_worker(self, task):
-        workers = self.clients_supporting[task.signature()]
+        workers = self.clients_supporting[task.signature]
         try:
             return next(filter(lambda c: c.state == ClientState.IDLE, workers))
         except StopIteration:
-            fut = self.loop.create_future()
-            self.waiting_tasks.append((task, fut))
-            return await fut
+            if len(workers) > 0:
+                worker = workers.pop(0)
+                workers.append(worker)
+                return worker
+            else:
+                fut = self.loop.create_future()
+                self.waiting_tasks[task.signature].append((task, fut))
+                return await fut
 
-    def start_task(self, task, args, kwargs):
-        async def start():
-            worker = await self.find_worker(task)
-            future = await worker.start(task, args, kwargs)
-            return await future
-
-        return start()
+    async def start_task(self, task, args, kwargs):
+        worker = await self.find_worker(task)
+        future = await worker.start(task, args, kwargs)
+        return await future
 
     def run(self, addr, port, certs=None):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -105,47 +120,70 @@ class Server:
 
         sock.bind((addr, port))
 
-        async def runner():
-            with sock:
-                sock.listen(1)
+        async def server():
+            try:
+                with sock:
+                    sock.listen(1)
 
-                while True:
-                    try:
-                        conn, peer = await self.loop.sock_accept(sock)
-                        with conn:
-                            await self.socket_connect(Stream(conn), peer)
-                    except:
-                        logger.exception("Exception in server")
+                    while self.alive:
+                        try:
+                            conn, peer = await self.loop.sock_accept(sock)
+                            with conn:
+                                await self.socket_connect(Stream(conn), peer)
+                        except:
+                            logger.exception("Uncaught exception:")
+            finally:
+                self.shutdown()
+                self.alive = False
 
-        return sock, runner()
+        return sock, server()
+
+    def shutdown(self):
+        for client in self.clients:
+            self.disconnect_client(client)
 
     async def socket_connect(self, stream, peer):
         addr, port = peer
         logger.info(f"Connection from {addr}:{port}")
 
         client = Client(addr, port, stream)
+        self.clients.append(client)
 
         try:
             while True:
                 msg = await stream.decode()
                 try:
                     handler = dispatch_table[msg[Keys.TYPE]]
-                    await handler(self, client, msg)
                 except KeyError:
                     logger.warning("Unknown message type.")
+                    continue
+
+                await handler(self, client, msg)
+        except ConnectionResetError:
+            logger.info(f"Client {client.addr}:{client.port} forcefully disconnected.")
         finally:
             self.disconnect_client(client)
 
     def disconnect_client(self, client):
-        pass
+        self.clients.remove(client)
+        for interface in client.supported_interfaces:
+            self.clients_supporting[interface.signature].remove(client)
+
+        client.disconnected()
 
     async def supports(self, client, msg):
         interface_hash = msg[Keys.INTERFACE]
         if interface_hash in self.interfaces_hash:
             interface = self.interfaces[interface_hash]
 
+            client.supports(interface)
+
             for task in interface.tasks.values():
-                self.clients_supporting[task.signature()].append(client)
+                self.clients_supporting[task.signature].append(client)
+
+                if task.signature in self.waiting_tasks:
+                    for _, future in self.waiting_tasks.pop(task.signature):
+                        future.set_result(client)
 
             await client.stream.send(ok())
         else:

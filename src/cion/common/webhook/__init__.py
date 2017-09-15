@@ -1,8 +1,8 @@
 from cion.common.workq.task import Interface
 
-interface = Interface("webhook")
+webhook = Interface("webhook")
 
 
-@interface.task
+@webhook.task
 def hello(name):
     pass

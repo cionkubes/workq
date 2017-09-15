@@ -1,12 +1,13 @@
 import asyncio
 
 from cion.common.workq.client import Orchestrator
-from cion.common.webhook import interface as webhook
+from cion.common.webhook import webhook
 
 
 @webhook.hello.implement
 async def hello(name):
     print(f"Hello {name}")
+    await asyncio.sleep(5)
     return "HW!"
 
 

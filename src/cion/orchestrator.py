@@ -1,11 +1,18 @@
 import asyncio
 
 from cion.common.workq.server import Server
-from cion.common.webhook import interface as webhook
+from cion.common.webhook import webhook
+
 from logzero import logger
 
 
 async def test():
+    while True:
+        asyncio.ensure_future(start_task())
+        await asyncio.sleep(10)
+
+
+async def start_task():
     result = await webhook.hello("Alan")
     logger.info(result)
 
