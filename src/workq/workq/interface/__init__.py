@@ -15,13 +15,13 @@ class Interface(Signature):
         task = Task(fn.__name__, signature(fn), self)
 
         sig = task.signature
-        assert sig not in self.tasks, "Task with same signature already exists in this interface."
+        assert sig not in self.tasks, "Task with same signature already exists in this cion_interface."
 
         self.tasks[sig] = task
         setattr(self, task.name, task)
 
     def signature_generator(self):
-        # The interface name is included in each interface signature, so to need to yield it here
+        # The cion_interface name is included in each cion_interface signature, so to need to yield it here
         for task in self.tasks.values():
             yield from task.signature_generator()
 

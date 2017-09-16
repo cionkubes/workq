@@ -1,8 +1,8 @@
 import asyncio
 from functools import partial
 
+from workq import apickle
 from .buffer import Buffer
-from ...workq import apickle
 
 NEWLINE = b'\n'
 

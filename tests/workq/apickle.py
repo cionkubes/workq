@@ -1,6 +1,6 @@
 import pytest
 
-from cion.common.workq.apickle import load, dump
+from workq.apickle import load, dump
 
 
 @pytest.mark.asyncio
@@ -18,5 +18,3 @@ async def test_many_same_files(filepair, objects):
     for obj in objects:
         await dump(obj, w)
         assert obj == await load(r)
-
-

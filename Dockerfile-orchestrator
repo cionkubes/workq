@@ -1,0 +1,16 @@
+FROM python:3.6-alpine
+
+COPY src/workq /opt/libs/workq
+RUN pip install /opt/libs/workq
+
+COPY src/cion_interface /opt/libs/cion_interface
+RUN pip install /opt/libs/cion_interface
+
+WORKDIR /opt/orchestrator
+
+COPY src/orchestrator/requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY src/orchestrator/orchestrator.py .
+
+CMD ["python", "orchestrator.py"]

@@ -3,7 +3,7 @@ import socket
 
 from logzero import logger
 
-from ..net.stream import Stream
+from workq.net.stream import Stream
 
 
 class StreamWrapper:

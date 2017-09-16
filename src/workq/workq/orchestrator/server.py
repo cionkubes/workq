@@ -32,7 +32,7 @@ class Server:
                 first_task, _ = tasks[0]
                 if num_waiting_tasks > 0:
                     logger.warning(f"{num_waiting_tasks} {first_task.pretty_name} task(s) without any clients "
-                                   "implementing their interface.")
+                                   "implementing their cion_interface.")
 
     def enable(self, interface):
         self.interfaces[interface.signature] = interface
@@ -137,7 +137,7 @@ class Server:
 
             await client.stream.send(ok())
         else:
-            await client.stream.send(error("Server does not use this interface"))
+            await client.stream.send(error("Server does not use this cion_interface"))
 
     async def work_done(self, client, msg):
         await client.work_done(msg)

@@ -4,7 +4,7 @@ import string
 
 import pytest
 
-from cion.common.workq.net.stream import Stream
+from workq.net.stream import Stream
 
 
 class Wrapper:

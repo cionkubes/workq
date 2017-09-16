@@ -2,8 +2,8 @@ import asyncio
 
 from logzero import logger
 
+from workq.net.messages import supports_interface, error_guard, Types, Keys, work_result, work_failed
 from .stream import StreamWrapper
-from ..net.messages import supports_interface, error_guard, Types, Keys, work_result, work_failed
 
 
 class Orchestrator:

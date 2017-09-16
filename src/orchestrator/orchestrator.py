@@ -2,8 +2,8 @@ import asyncio
 
 from logzero import logger
 
-from cion.common.webhook import webhook
-from cion.common.workq.orchestrator import Server
+from cion_interface.service import service
+from workq.orchestrator import Server
 
 
 async def test():
@@ -13,14 +13,14 @@ async def test():
 
 
 async def start_task():
-    result = await webhook.hello("Alan")
+    result = await service.update("test_web", "test:latest")
     logger.info(result)
 
 
 def main():
     loop = asyncio.get_event_loop()
     orchestrator = Server()
-    orchestrator.enable(webhook)
+    orchestrator.enable(service)
 
     socket, server = orchestrator.run(addr='localhost', port=8890)
     logger.info(f'Serving on {socket.getsockname()}')

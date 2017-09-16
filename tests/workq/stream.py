@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from cion.common.workq.apickle import dump, load
+from workq.apickle import dump, load
 
 
 @pytest.mark.asyncio

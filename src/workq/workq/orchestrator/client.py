@@ -32,7 +32,7 @@ class Client:
         try:
             future = self.futures.pop(msg[Keys.WORK_ID])
         except KeyError:
-            logger.error(f"Worker finished working on a interface, but no such work was started by this orchestrator instance.")
+            logger.error(f"Worker finished working on a cion_interface, but no such work was started by this orchestrator instance.")
             logger.info(", ".join(map(lambda item: f"{item[0]}: {item[1]}", msg.items())))
             return
 
