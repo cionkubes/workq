@@ -1,9 +1,9 @@
 FROM python:3.6-alpine
 
-COPY src/workq /opt/libs/
+COPY src/workq /opt/libs/workq
 RUN pip install /opt/libs/workq
 
-COPY src/cion_interface /opt/libs/
+COPY src/cion_interface /opt/libs/cion_interface
 RUN pip install /opt/libs/cion_interface
 
 WORKDIR /opt/worker
