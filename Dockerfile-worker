@@ -12,5 +12,6 @@ COPY src/worker/requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY src/worker/worker.py .
+COPY src/worker/monkey_patch.py .
 
 CMD ["python", "worker.py"]
