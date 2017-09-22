@@ -69,7 +69,7 @@ class StreamWrapper:
                 logger.info(f"Connected to {self.address[0]}:{self.address[1]}.")
                 sock.setblocking(True)
                 return sock
-            except ConnectionRefusedError:
+            except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror):
                 logger.debug(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
                              "second(s).")
                 await asyncio.sleep(self.retry_timeout)

@@ -76,17 +76,20 @@ class Server:
                     sock.listen(1)
 
                     while self.alive:
-                        try:
-                            conn, peer = await self.loop.sock_accept(sock)
-                            with conn:
-                                await self.socket_connect(Stream(conn), peer)
-                        except:
-                            logger.exception("Uncaught exception:")
+                        conn, peer = await self.loop.sock_accept(sock)
+                        asyncio.ensure_future(self.spawn_connection(conn, peer), loop=self.loop)
             finally:
                 self.shutdown()
                 self.alive = False
 
         return sock, server()
+
+    async def spawn_connection(self, conn, peer):
+        try:
+            with conn:
+                await self.socket_connect(Stream(conn), peer)
+        except:
+            logger.exception("Uncaught exception :")
 
     def shutdown(self):
         for client in self.clients:
