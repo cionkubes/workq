@@ -3,6 +3,7 @@ class Types:
     RESPONSE = 1
     DO_WORK = 2
     WORK_COMPLETE = 3
+    PING = 4
 
 
 class Keys:
@@ -16,6 +17,9 @@ class Keys:
     INTERFACE = 'i'
     ERROR = 'e'
     MSG = 'm'
+
+
+ping = { Keys.TYPE: Types.PING }
 
 
 def ok(**data):
@@ -59,3 +63,7 @@ def work_failed(work_id, exception):
 def error_guard(response):
     assert response[Keys.TYPE] == Types.RESPONSE, "Expected response type"
     assert not response[Keys.ERROR], response[Keys.MSG]
+
+
+def expect_guard(type, response):
+    assert response[Keys.TYPE] == type, f"Expected {type} type, but got {response[Keys.TYPE]}."

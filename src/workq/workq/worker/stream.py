@@ -2,12 +2,13 @@ import asyncio
 import socket
 
 from logzero import logger
+from workq.net import messages
 
 from workq.net.stream import Stream
 
 
 class StreamWrapper:
-    def __init__(self, retry_timeout, loop=asyncio.get_event_loop()):
+    def __init__(self, retry_timeout, loop=asyncio.get_event_loop(), keepalive_every=10):
         self.retry_timeout = retry_timeout
         self.loop = loop
         self.available = asyncio.Event(loop=loop)
@@ -15,6 +16,9 @@ class StreamWrapper:
         self.socket = None
         self.address = None
         self.on_connect_callback = None
+        self.keepalive_task = None
+        self.keepalive_every = keepalive_every
+        self.keepalive_pause = False
 
         @self.on_connect
         async def callback():
@@ -49,16 +53,31 @@ class StreamWrapper:
     def close(self):
         self.socket.close()
 
+    async def _keepalive(self):
+        while True:
+            await asyncio.sleep(self.keepalive_every)
+
+            if self.keepalive_pause:
+                continue
+
+            await self.send(messages.ping)
+            messages.expect_guard(messages.Types.PING, await self.decode())
+
     async def connect(self, addr, port):
         self.address = addr, port
         await self._connect()
 
+        self.keepalive_task = asyncio.ensure_future(self._keepalive())
+
     async def _connect(self):
+        self.keepalive_pause = True
+
         self.socket = await self.connect_retry()
         self.backing = Stream(self.socket)
         self.available.set()
-
+        
         await self.on_connect_callback()
+        self.keepalive_pause = False
 
     async def connect_retry(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
