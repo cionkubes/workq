@@ -3,12 +3,13 @@ import socket
 
 from logzero import logger
 from workq.net import messages
+from workq.net.messages import Types, Keys
 
 from workq.net.stream import Stream
 
 
 class StreamWrapper:
-    def __init__(self, retry_timeout, loop=asyncio.get_event_loop(), keepalive_every=10):
+    def __init__(self, retry_timeout, loop=asyncio.get_event_loop(), keepalive_every=4):
         self.retry_timeout = retry_timeout
         self.loop = loop
         self.available = asyncio.Event(loop=loop)
@@ -27,6 +28,11 @@ class StreamWrapper:
     def on_connect(self, fn):
         self.on_connect_callback = fn
 
+    async def reconnect(self):
+        self.available.clear()
+        self.socket.close()
+        await self._connect()
+
     async def send(self, msg):
         while True:
             await self.available.wait()
@@ -35,9 +41,7 @@ class StreamWrapper:
                 return
             except ConnectionResetError:
                 logger.debug(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
-                self.socket.close()
-                self.available.clear()
-                await self._connect()
+                await self.reconnect()
 
     async def decode(self):
         while True:
@@ -46,9 +50,7 @@ class StreamWrapper:
                 return await self.backing.decode()
             except ConnectionResetError:
                 logger.debug(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
-                self.socket.close()
-                self.available.clear()
-                await self._connect()
+                await self.reconnect()
 
     def close(self):
         self.socket.close()
@@ -61,7 +63,15 @@ class StreamWrapper:
                 continue
 
             await self.send(messages.ping)
-            messages.expect_guard(messages.Types.PING, await self.decode())
+
+            async def expect_ping(msg):
+                return msg[Keys.TYPE] == Types.PING
+
+            try:
+                await self.backing.wait_for(expect_ping, timeout=5)
+            except asyncio.TimeoutError:
+                logger.debug(f"Server {self.address[0]}:{self.address[1]} timed out.")
+                await self.reconnect()
 
     async def connect(self, addr, port):
         self.address = addr, port
@@ -86,7 +96,6 @@ class StreamWrapper:
             try:
                 await self.loop.sock_connect(sock, self.address)
                 logger.info(f"Connected to {self.address[0]}:{self.address[1]}.")
-                sock.setblocking(True)
                 return sock
             except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror):
                 logger.debug(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "

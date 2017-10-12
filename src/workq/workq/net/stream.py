@@ -1,4 +1,5 @@
 import asyncio
+from collections import deque
 from functools import partial
 
 from workq import apickle
@@ -16,12 +17,16 @@ class Stream:
 
         self.buffer = Buffer(bufsize, loop)
         self.buffer_size = bufsize
+        self.pushback_que = asyncio.Queue(maxsize=10)
 
     def send(self, data):
         return apickle.dump(data, self)
 
     def decode(self):
-        return apickle.load(self)
+        if self.pushback_que.empty():
+            return apickle.load(self)
+        else:
+            return self.pushback_que.get()
 
     async def _read_nolock(self, n):
         if self.buffer.read_available > 0:
@@ -63,3 +68,15 @@ class Stream:
                     break
 
             return bytes(result)
+
+    def wait_for(self, predicate, timeout=10):
+        async def task():
+            while True:
+                msg = await self.decode()
+                if predicate(msg):
+                    return msg
+                else:
+                    await self.pushback_que.put(msg)
+                    await asyncio.sleep(0.001)
+
+        return asyncio.wait_for(task(), timeout=timeout)

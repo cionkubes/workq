@@ -51,6 +51,10 @@ class Client:
     def disconnected(self):
         pass
 
+    @property
+    def name(self):
+        return f"{self.addr}:{self.port}"
+
 
 class ClientState(IntEnum):
     IDLE = auto()

@@ -145,8 +145,12 @@ class Server:
     async def work_done(self, client, msg):
         await client.work_done(msg)
 
+    async def recv_ping(self, client, msg):
+        logger.debug(f"Received keep-alive ping from client {client.name}")
+
 
 dispatch_table = {
     Types.SUPPORTS: Server.supports,
-    Types.WORK_COMPLETE: Server.work_done
+    Types.WORK_COMPLETE: Server.work_done,
+    Types.PING: Server.recv_ping
 }
