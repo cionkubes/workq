@@ -1,5 +1,6 @@
 import asyncio
 import socket
+import concurrent.futures
 
 from logzero import logger
 from workq.net import messages
@@ -64,11 +65,9 @@ class StreamWrapper:
 
             await self.send(messages.ping)
 
-            async def expect_ping(msg):
-                return msg[Keys.TYPE] == Types.PING
-
             try:
-                await self.backing.wait_for(expect_ping, timeout=5)
+                msg = await self.decode()
+                assert msg[Keys.TYPE] == Types.PING, "Expected ping response to ping keep-alive message."
             except asyncio.TimeoutError:
                 logger.debug(f"Server {self.address[0]}:{self.address[1]} timed out.")
                 await self.reconnect()
@@ -77,7 +76,7 @@ class StreamWrapper:
         self.address = addr, port
         await self._connect()
 
-        self.keepalive_task = asyncio.ensure_future(self._keepalive())
+        return self._keepalive()
 
     async def _connect(self):
         self.keepalive_pause = True

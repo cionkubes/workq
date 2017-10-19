@@ -6,7 +6,7 @@ from collections import defaultdict
 from logzero import logger
 
 from .client import Client, ClientState
-from ..net.messages import Types, Keys, ok, error
+from ..net.messages import Types, Keys, ok, error, ping
 from ..net.stream import Stream
 
 
@@ -114,6 +114,8 @@ class Server:
                 await handler(self, client, msg)
         except ConnectionResetError:
             logger.info(f"Client {client.addr}:{client.port} forcefully disconnected.")
+        except EOFError:
+            logger.info(f"Client {client.addr}:{client.port} disconnected gracefully.")
         finally:
             self.disconnect_client(client)
 
@@ -147,6 +149,7 @@ class Server:
 
     async def recv_ping(self, client, msg):
         logger.debug(f"Received keep-alive ping from client {client.name}")
+        await client.stream.send(ping)
 
 
 dispatch_table = {

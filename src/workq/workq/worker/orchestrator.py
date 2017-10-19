@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 
 from logzero import logger
 
@@ -29,21 +30,30 @@ class Orchestrator:
                 await stream.send(supports_interface(interface))
                 error_guard(await stream.decode())
 
-        await stream.connect(self.addr, self.port)
+        keepalive = await stream.connect(self.addr, self.port)
 
-        try:
-            while True:
-                msg = await stream.decode()
+        async def loop():
+            try:
+                while True:
+                    msg = await stream.decode()
 
-                try:
-                    handler = dispatch_table[msg[Keys.TYPE]]
-                except KeyError:
-                    logger.warning("Unknown message type.")
-                    continue
+                    try:
+                        handler = dispatch_table[msg[Keys.TYPE]]
+                    except KeyError:
+                        logger.warning("Unknown message type.")
+                        continue
 
-                await handler(self, stream, msg)
-        finally:
-            stream.close()
+                    await handler(self, stream, msg)
+            except:
+                logger.exception("Unhandled exception:")
+                raise
+            finally:
+                stream.close()
+
+        done, pending = await asyncio.wait([loop(), keepalive], return_when=concurrent.futures.FIRST_COMPLETED)
+
+        for task in pending:
+            task.cancel()
 
     async def work(self, stream, msg):
         work_id = msg[Keys.WORK_ID]
