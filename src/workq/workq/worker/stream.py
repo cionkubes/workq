@@ -18,9 +18,6 @@ class StreamWrapper:
         self.socket = None
         self.address = None
         self.on_connect_callback = None
-        self.keepalive_task = None
-        self.keepalive_every = keepalive_every
-        self.keepalive_pause = False
 
         @self.on_connect
         async def callback():
@@ -56,37 +53,16 @@ class StreamWrapper:
     def close(self):
         self.socket.close()
 
-    async def _keepalive(self):
-        while True:
-            await asyncio.sleep(self.keepalive_every)
-
-            if self.keepalive_pause:
-                continue
-
-            await self.send(messages.ping)
-
-            try:
-                msg = await self.decode()
-                assert msg[Keys.TYPE] == Types.PING, "Expected ping response to ping keep-alive message."
-            except asyncio.TimeoutError:
-                logger.debug(f"Server {self.address[0]}:{self.address[1]} timed out.")
-                await self.reconnect()
-
     async def connect(self, addr, port):
         self.address = addr, port
         await self._connect()
 
-        return self._keepalive()
-
     async def _connect(self):
-        self.keepalive_pause = True
-
         self.socket = await self.connect_retry()
         self.backing = Stream(self.socket)
         self.available.set()
         
         await self.on_connect_callback()
-        self.keepalive_pause = False
 
     async def connect_retry(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
