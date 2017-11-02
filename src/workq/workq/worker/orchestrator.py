@@ -3,9 +3,34 @@ import concurrent.futures
 
 from logzero import logger
 
-from workq.splitter import T
-from net.messages import supports_interface, ping, error_guard, Types, Keys, work_result, work_failed
+from ..net.messages import supports_interface, ping, error_guard, Types, Keys, work_result, work_failed
 from .stream import StreamWrapper
+
+
+class PingObserver:
+    def __init__(self):
+        self.subscription = None
+        self.ping_event = asyncio.Event()
+
+    def start(self, observable):
+        self.subscription = observable.subscribe(self)
+
+    async def on_no_ping(self, corutine_producer, timeout=10):
+        try:
+            await asyncio.wait_for(self.ping_event.wait(), timeout=timeout)
+        except asyncio.futures.TimeoutError:
+            await corutine_producer()
+
+    def on_next(self, message):
+        if message[Keys.TYPE] == Types.PING:
+            self.ping_event.set()
+            self.subscription.dispose()
+
+    def on_error(self, error):
+        pass
+
+    def on_complete(self):
+        pass
 
 
 class Orchestrator:
@@ -20,29 +45,24 @@ class Orchestrator:
         self.keepalive_every = keepalive_every
         self.keepalive_pause = False
 
-    async def _keepalive(self, stream, splitter):
+    async def _keepalive(self, stream):
         while True:
             await asyncio.sleep(self.keepalive_every)
 
             if self.keepalive_pause or (not stream.available.is_set()):
                 continue
 
-            async def wait_for_ping():
-                with splitter.tee() as messages:
-                    await stream.send(ping)
+            observer = PingObserver()
+            observer.start(stream.observable)
 
-                    async for msg in messages:
-                        if msg[Keys.TYPE] == Types.PING:
-                            break
-                        else:
-                            messages.send(msg)
+            await stream.send(ping)
 
-            try:
-                await asyncio.wait_for(wait_for_ping(), 4)
-            except asyncio.TimeoutError:
+            async def no_ping():
                 if not stream.available.is_set():
                     logger.debug(f"Server {self.addr}:{self.port} timed out.")
                     await stream.reconnect()
+
+            await observer.on_no_ping(no_ping, timeout=4)
 
     async def join(self, *interfaces):
         for interface in interfaces:
@@ -61,32 +81,32 @@ class Orchestrator:
 
         await stream.connect(self.addr, self.port)
 
-        async def backing():
-            while True:
-                yield await stream.decode()
+        shutdown_event = asyncio.Event()
 
-        splitter = T(backing())
-        keepalive = self._keepalive(stream, splitter)
-
-        async def loop():
+        def receive(message):
             try:
-                with splitter.tee() as messages:
-                    async for msg in messages:
-                        try:
-                            handler = dispatch_table[msg[Keys.TYPE]]
-                        except KeyError:
-                            logger.debug("Unknown message type, putting back in iterator.")
-                            messages.send(msg)
-                            continue
+                type = message[Keys.TYPE]
 
-                        await handler(self, stream, msg)
+                if type not in Types.all:
+                    logger.critical(f"Unknown message type {type}")
+                    return
+
+                if type not in dispatch_table:
+                    logger.debug(f"Message type {type} does not have an handler.")
+                    return
+
+                handler = dispatch_table[type]
+                asyncio.ensure_future(handler(self, stream, message))
             except:
-                logger.exception("Unhandled exception:")
-                raise
-            finally:
-                stream.close()
+                logger.exeption("Unexpected exception in message handling")
 
-        done, pending = await asyncio.wait([loop(), splitter.drive(), keepalive], return_when=concurrent.futures.FIRST_COMPLETED)
+        def teardown():
+            stream.close()
+            shutdown_event.set()
+
+        stream.observable.subscribe(receive, logger.critical, teardown)
+
+        done, pending = await asyncio.wait([shutdown_event.wait(), self._keepalive(stream)], return_when=concurrent.futures.FIRST_COMPLETED)
 
         for task in pending:
             task.cancel()

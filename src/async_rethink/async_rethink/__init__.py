@@ -25,6 +25,7 @@ def require_connection(fn):
 
     return wrapper
 
+
 scheduler = rx.concurrency.AsyncIOScheduler(asyncio.get_event_loop())
 
 
@@ -149,6 +150,7 @@ class keydefaultdict(defaultdict):
         else:
             ret = self[key] = self.default_factory(key)
             return ret
+
 
 async def unless(task, other, ex: Callable[[Exception], Exception]=AssertionError):
     task_fut = asyncio.ensure_future(task)

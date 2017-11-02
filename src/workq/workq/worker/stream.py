@@ -1,7 +1,10 @@
 import asyncio
+import functools
 import socket
 
+import rx.concurrency
 from logzero import logger
+from rx import Observable
 
 from workq.net.stream import Stream
 
@@ -74,3 +77,38 @@ class StreamWrapper:
                 logger.critical(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
                              "second(s).")
                 await asyncio.sleep(self.retry_timeout)
+
+    @property
+    @functools.lru_cache()
+    def observable(self) -> Observable:
+        logger.debug(f"Creating stream observable.")
+
+        def subscribe(obs):
+            logger.debug(f"Subscribed to stream observable.")
+
+            async def push_values():
+                try:
+                    while True:
+                        obs.on_next(await self.decode())
+                except EOFError:
+                    if self.available.is_set():
+                        logger.info("Orchestrator shut down. Attempting to reconnect.")
+                        await self.reconnect()
+                    else:
+                        await self.available.wait()
+
+                except asyncio.futures.CancelledError:
+                    return
+
+            task = asyncio.ensure_future(push_values())
+
+            def dispose():
+                logger.debug(f"Disposed of stream observable subscription.")
+                task.cancel()
+
+            return dispose
+
+        return Observable.create(subscribe).subscribe_on(scheduler).share()
+
+
+scheduler = rx.concurrency.AsyncIOScheduler(asyncio.get_event_loop())

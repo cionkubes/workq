@@ -5,6 +5,8 @@ class Types:
     WORK_COMPLETE = 3
     PING = 4
 
+    all = [SUPPORTS, RESPONSE, DO_WORK, WORK_COMPLETE, PING]
+
 
 class Keys:
     WORK_ID = 'w'

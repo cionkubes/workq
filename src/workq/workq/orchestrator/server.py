@@ -78,6 +78,8 @@ class Server:
                     while self.alive:
                         conn, peer = await self.loop.sock_accept(sock)
                         asyncio.ensure_future(self.spawn_connection(conn, peer), loop=self.loop)
+            except asyncio.CancelledError:
+                logger.info("Server stopped.")
             finally:
                 self.shutdown()
                 self.alive = False
