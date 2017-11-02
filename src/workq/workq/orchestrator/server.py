@@ -122,7 +122,8 @@ class Server:
     def disconnect_client(self, client):
         self.clients.remove(client)
         for interface in client.supported_interfaces:
-            self.clients_supporting[interface.signature].remove(client)
+            for task in interface.tasks.values():
+                self.clients_supporting[task.signature].remove(client)
 
         client.disconnected()
 

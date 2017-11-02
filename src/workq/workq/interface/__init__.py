@@ -34,4 +34,3 @@ class Interface(Signature):
     def enable(self, server):
         assert self.server is None, "Interface already enabled"
         self.server = server
-

@@ -1,16 +1,13 @@
 import asyncio
 import socket
-import concurrent.futures
 
 from logzero import logger
-from workq.net import messages
-from workq.net.messages import Types, Keys
 
 from workq.net.stream import Stream
 
 
 class StreamWrapper:
-    def __init__(self, retry_timeout, loop=asyncio.get_event_loop(), keepalive_every=4):
+    def __init__(self, retry_timeout, loop=asyncio.get_event_loop()):
         self.retry_timeout = retry_timeout
         self.loop = loop
         self.available = asyncio.Event(loop=loop)
@@ -18,6 +15,7 @@ class StreamWrapper:
         self.socket = None
         self.address = None
         self.on_connect_callback = None
+        self.connect_task = None
 
         @self.on_connect
         async def callback():
@@ -38,7 +36,7 @@ class StreamWrapper:
                 await self.backing.send(msg)
                 return
             except ConnectionResetError:
-                logger.debug(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
+                logger.waring(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
                 await self.reconnect()
 
     async def decode(self):
@@ -47,7 +45,7 @@ class StreamWrapper:
             try:
                 return await self.backing.decode()
             except ConnectionResetError:
-                logger.debug(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
+                logger.warning(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
                 await self.reconnect()
 
     def close(self):
@@ -61,7 +59,7 @@ class StreamWrapper:
         self.socket = await self.connect_retry()
         self.backing = Stream(self.socket)
         self.available.set()
-        
+
         await self.on_connect_callback()
 
     async def connect_retry(self):
@@ -73,6 +71,6 @@ class StreamWrapper:
                 logger.info(f"Connected to {self.address[0]}:{self.address[1]}.")
                 return sock
             except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror):
-                logger.debug(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
+                logger.critical(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
                              "second(s).")
                 await asyncio.sleep(self.retry_timeout)

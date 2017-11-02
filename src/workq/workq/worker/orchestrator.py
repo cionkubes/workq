@@ -3,7 +3,7 @@ import concurrent.futures
 
 from logzero import logger
 
-from splitter import T
+from workq.splitter import T
 from net.messages import supports_interface, ping, error_guard, Types, Keys, work_result, work_failed
 from .stream import StreamWrapper
 
@@ -24,7 +24,7 @@ class Orchestrator:
         while True:
             await asyncio.sleep(self.keepalive_every)
 
-            if self.keepalive_pause:
+            if self.keepalive_pause or (not stream.available.is_set()):
                 continue
 
             async def wait_for_ping():
@@ -40,8 +40,9 @@ class Orchestrator:
             try:
                 await asyncio.wait_for(wait_for_ping(), 4)
             except asyncio.TimeoutError:
-                logger.debug(f"Server {self.addr}:{self.port} timed out.")
-                await stream.reconnect()
+                if not stream.available.is_set():
+                    logger.debug(f"Server {self.addr}:{self.port} timed out.")
+                    await stream.reconnect()
 
     async def join(self, *interfaces):
         for interface in interfaces:
