@@ -47,22 +47,30 @@ class Orchestrator:
 
     async def _keepalive(self, stream):
         while True:
-            await asyncio.sleep(self.keepalive_every)
+            try:
+                await asyncio.sleep(self.keepalive_every)
 
-            if self.keepalive_pause or (not stream.available.is_set()):
-                continue
+                if self.keepalive_pause or (not stream.available.is_set()):
+                    continue
 
-            observer = PingObserver()
-            observer.start(stream.observable)
+                observer = PingObserver()
+                observer.start(stream.observable)
 
-            await stream.send(ping)
+                await stream.send(ping)
 
-            async def no_ping():
+                async def no_ping():
+                    if not stream.available.is_set():
+                        logger.debug(f"Server {self.addr}:{self.port} timed out.")
+                        await stream.reconnect()
+
+                await observer.on_no_ping(no_ping, timeout=4)
+            except BrokenPipeError:
                 if not stream.available.is_set():
-                    logger.debug(f"Server {self.addr}:{self.port} timed out.")
+                    logger.warning("Connection is closed. Reconnecting")
                     await stream.reconnect()
 
-            await observer.on_no_ping(no_ping, timeout=4)
+            except:
+                logger.exception("Unknown exception in keepalive.")
 
     async def join(self, *interfaces):
         for interface in interfaces:
