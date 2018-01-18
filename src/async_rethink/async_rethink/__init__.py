@@ -152,7 +152,7 @@ class keydefaultdict(defaultdict):
             return ret
 
 
-async def unless(task, other, ex: Callable[[Exception], Exception]=AssertionError):
+async def unless(task, other, ex: Callable[[], Exception]=AssertionError):
     task_fut = asyncio.ensure_future(task)
     other_fut = asyncio.ensure_future(other)
 
@@ -165,3 +165,12 @@ async def unless(task, other, ex: Callable[[Exception], Exception]=AssertionErro
 
     other_fut.cancel()
     return task_fut.result()
+
+
+async def gather(async_generator):
+    result = []
+
+    async for element in async_generator:
+        result.append(element)
+
+    return result
