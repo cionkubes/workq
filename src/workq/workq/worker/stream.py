@@ -73,7 +73,7 @@ class StreamWrapper:
                 await self.loop.sock_connect(sock, self.address)
                 logger.info(f"Connected to {self.address[0]}:{self.address[1]}.")
                 return sock
-            except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror):
+            except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror, OSError):
                 logger.critical(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
                              "second(s).")
                 await asyncio.sleep(self.retry_timeout)

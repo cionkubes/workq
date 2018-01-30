@@ -7,7 +7,9 @@ import asyncio
 import rethinkdb as r
 import rx.concurrency
 from logzero import logger
+from .monkey_patch import patch_observable
 from rx import Observable
+patch_observable(Observable)
 
 r.set_loop_type('asyncio')
 
