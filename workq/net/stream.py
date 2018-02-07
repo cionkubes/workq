@@ -1,5 +1,4 @@
 import asyncio
-from collections import deque
 from functools import partial
 
 from workq import apickle
