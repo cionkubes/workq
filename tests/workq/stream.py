@@ -35,7 +35,8 @@ async def test_read_exactly(streampair, event_loop):
 async def test_many_separate_streams(event_loop, streampair_generator, objects):
     for obj, streampair in zip(objects, streampair_generator):
         r, w = streampair
-        write_task = event_loop.create_task(dump(obj, w))
+
+        write_task = asyncio.ensure_future(dump(obj, w), loop=event_loop)
         assert obj == await load(r)
         await write_task
 
@@ -45,6 +46,6 @@ async def test_many_same_stream(event_loop, streampair, objects):
     r, w = streampair
 
     for obj in objects:
-        write_task = event_loop.create_task(dump(obj, w))
+        write_task = asyncio.ensure_future(dump(obj, w), loop=event_loop)
         assert obj == await load(r)
         await write_task
