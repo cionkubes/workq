@@ -38,8 +38,6 @@ async def test_many_separate_streams(streampair_generator, objects):
         await dump(obj, w)
         assert obj == await load(r)
 
-    print("Done")
-
 
 @pytest.mark.asyncio
 async def test_many_same_stream(streampair, objects):
@@ -48,5 +46,3 @@ async def test_many_same_stream(streampair, objects):
     for obj in objects:
         await dump(obj, w)
         assert obj == await load(r)
-
-    print("Done 2")
