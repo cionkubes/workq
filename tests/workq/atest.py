@@ -19,5 +19,6 @@ from workq.apickle import dump, load
 async def test_many_separate_streams(streampair_generator, objects):
     r, w = next(streampair_generator)
     for obj in objects:
-        await dump(objects[0], w)
-        assert objects[0] == await load(r)
+        write_task = loop.create_task(dump(obj, w))
+        assert obj == await load(r)
+        await write_task
