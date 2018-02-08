@@ -32,17 +32,19 @@ async def test_read_exactly(streampair, event_loop):
 
 
 @pytest.mark.asyncio
-async def test_many_separate_streams(streampair_generator, objects):
+async def test_many_separate_streams(event_loop, streampair_generator, objects):
     for obj, streampair in zip(objects, streampair_generator):
         r, w = streampair
-        await dump(obj, w)
+        write_task = event_loop.create_task(dump(obj, w))
         assert obj == await load(r)
+        await write_task
 
 
 @pytest.mark.asyncio
-async def test_many_same_stream(streampair, objects):
+async def test_many_same_stream(event_loop, streampair, objects):
     r, w = streampair
 
     for obj in objects:
-        await dump(obj, w)
+        write_task = event_loop.create_task(dump(obj, w))
         assert obj == await load(r)
+        await write_task
