@@ -8,5 +8,6 @@ from workq.apickle import dump, load
 async def test_many_separate_streams(streampair_generator, objects):
     r, w = next(streampair_generator)
     obj = objects[0]
-    await dump(obj, w)
-    assert obj == await load(r)
+    for streampair, obj in zip(streampair_generator, objects):
+        await dump(obj, w)
+        assert obj == await load(r)
