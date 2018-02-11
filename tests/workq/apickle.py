@@ -10,6 +10,7 @@ async def test_many_separate_files(event_loop, filepair_generator, objects):
     print("1")
     for obj, filepair in zip(objects, filepair_generator):
         print("2")
+        print(len(obj))
         r, w = filepair
         write_task = asyncio.ensure_future(dump(obj, w), loop=event_loop)
         read_task = asyncio.ensure_future(load(r), loop=event_loop)
