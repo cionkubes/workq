@@ -27,6 +27,9 @@ class Wrapper:
 @pytest.fixture
 def filepair():
     s1, s2 = socket.socketpair()
+    s1.setblocking(False)
+    s2.setblocking(False)
+    
     return Wrapper(s1.makefile(mode="brw", buffering=0)), Wrapper(s2.makefile(mode="brw", buffering=0))
 
 
