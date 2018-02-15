@@ -1,40 +1,51 @@
 import random
 import socket
 import string
+import io
 
 import pytest
 
 from workq.net.stream import Stream
 
 
-class Wrapper:
-    def __init__(self, file):
-        self.file = file
+class AsyncBytesIOChannel:
+    def __init__(self):
+        self.read_head = 0
+        self.write_head = 0
+        self.buffer = io.BytesIO()
+
+    async def write(self, data, *args, **kwargs):
+        self.buffer.seek(self.write_head)
+        self.buffer.write(data, *args, **kwargs)
+        self.write_head += len(data)
 
     async def read(self, n):
-        return self.file.read(n)
+        self.buffer.seek(self.read_head)
+        result = self.buffer.read(n)
+        self.read_head += n
+        return result
 
     async def readline(self):
-        return self.file.readline()
-
-    async def write(self, *args, **kwargs):
-        return self.file.write(*args, **kwargs)
+        line = self.buffer.readline()
+        self.read_head += len(line)
+        return line
 
     def seek(self, at):
-        self.file.seek(at)
+        self.read_head = at
 
 
 @pytest.fixture
-def filepair():
-    s1, s2 = socket.socketpair()
-    return Wrapper(s1.makefile(mode="brw", buffering=0)), Wrapper(s2.makefile(mode="brw", buffering=0))
+def channel():
+    channel = AsyncBytesIOChannel()
+    
+    return channel
 
 
 @pytest.fixture
-def filepair_generator():
+def channel_generator():
     def gen():
         while True:
-            yield filepair()
+            yield channel()
 
     return gen()
 
