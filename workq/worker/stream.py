@@ -87,18 +87,21 @@ class StreamWrapper:
             logger.debug(f"Subscribed to stream observable.")
 
             async def push_values():
-                try:
-                    while True:
+                while True:
+                    try:
                         obs.on_next(await self.decode())
-                except EOFError:
-                    if self.available.is_set():
-                        logger.info("Orchestrator shut down. Attempting to reconnect.")
-                        await self.reconnect()
-                    else:
-                        await self.available.wait()
+                    except EOFError:
+                        if self.available.is_set():
+                            logger.info("Orchestrator shut down. Attempting to reconnect.")
+                            await self.reconnect()
+                        else:
+                            await self.available.wait()
 
-                except asyncio.futures.CancelledError:
-                    return
+                    except asyncio.futures.CancelledError:
+                        logger.warning("Push-values future cancelled")
+                        return
+            
+                logger.error("Push-values unexpectedly shutdown.")
 
             task = asyncio.ensure_future(push_values())
 
