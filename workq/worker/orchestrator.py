@@ -50,8 +50,14 @@ class Orchestrator:
             try:
                 await asyncio.sleep(self.keepalive_every)
 
-                if self.keepalive_pause or (not stream.available.is_set()):
-                    continue
+                if self.keepalive_pause:
+                    logger.debug("Keepalive paused, skipping check")
+
+                if not stream.available.is_set():
+                    logger.debug(
+                        "Keepalive failed, no connection. Waiting for connection...")
+                    await stream.available.wait()
+                    logger.debug("Keepalive resumed")
 
                 observer = PingObserver()
                 observer.start(stream.observable)
@@ -60,7 +66,8 @@ class Orchestrator:
 
                 async def no_ping():
                     if not stream.available.is_set():
-                        logger.debug(f"Server {self.addr}:{self.port} timed out.")
+                        logger.debug(
+                            f"Server {self.addr}:{self.port} timed out.")
                         await stream.reconnect()
 
                 await observer.on_no_ping(no_ping, timeout=4)
@@ -100,7 +107,8 @@ class Orchestrator:
                     return
 
                 if type not in dispatch_table:
-                    logger.debug(f"Message type {type} does not have an handler.")
+                    logger.debug(
+                        f"Message type {type} does not have an handler.")
                     return
 
                 handler = dispatch_table[type]
