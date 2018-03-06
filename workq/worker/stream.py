@@ -39,7 +39,8 @@ class StreamWrapper:
                 await self.backing.send(msg)
                 return
             except ConnectionResetError:
-                logger.waring(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
+                logger.waring(
+                    f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
                 await self.reconnect()
 
     async def decode(self):
@@ -48,7 +49,8 @@ class StreamWrapper:
             try:
                 return await self.backing.decode()
             except ConnectionResetError:
-                logger.warning(f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
+                logger.warning(
+                    f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
                 await self.reconnect()
 
     def close(self):
@@ -71,11 +73,12 @@ class StreamWrapper:
         while True:
             try:
                 await self.loop.sock_connect(sock, self.address)
-                logger.info(f"Connected to {self.address[0]}:{self.address[1]}.")
+                logger.info(
+                    f"Connected to {self.address[0]}:{self.address[1]}.")
                 return sock
             except (ConnectionRefusedError, ConnectionAbortedError, socket.gaierror, OSError):
-                logger.critical(f"Connect call to {self.address[0]}:{self.address[1]} failed, retying in {self.retry_timeout} "
-                             "second(s).")
+                logger.critical(f"Connect call to {self.address[0]}:{self.address[1]} failed, retrying in {self.retry_timeout} "
+                                "second(s).")
                 await asyncio.sleep(self.retry_timeout)
 
     @property
@@ -92,7 +95,8 @@ class StreamWrapper:
                         obs.on_next(await self.decode())
                     except EOFError:
                         if self.available.is_set():
-                            logger.info("Orchestrator shut down. Attempting to reconnect.")
+                            logger.info(
+                                "Orchestrator shut down. Attempting to reconnect.")
                             await self.reconnect()
                         else:
                             await self.available.wait()
@@ -100,7 +104,7 @@ class StreamWrapper:
                     except asyncio.futures.CancelledError:
                         logger.warning("Push-values future cancelled")
                         return
-            
+
                 logger.error("Push-values unexpectedly shutdown.")
 
             task = asyncio.ensure_future(push_values())
