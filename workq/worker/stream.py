@@ -39,7 +39,7 @@ class StreamWrapper:
                 await self.backing.send(msg)
                 return
             except ConnectionResetError:
-                logger.waring(
+                logger.warning(
                     f"Server {self.address[0]}:{self.address[1]} forcefully disconnected.")
                 await self.reconnect()
 
