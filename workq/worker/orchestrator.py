@@ -21,6 +21,13 @@ class PingObserver:
         except asyncio.futures.TimeoutError:
             await corutine_producer()
 
+    async def got_response_in(self, seconds=10):
+        try:
+            await asyncio.wait_for(self.ping_event.wait(), timeout=seconds)
+            return True
+        except asyncio.futures.TimeoutError:
+            return False
+
     def on_next(self, message):
         if message[Keys.TYPE] == Types.PING:
             self.ping_event.set()
@@ -31,6 +38,22 @@ class PingObserver:
 
     def on_complete(self):
         pass
+
+
+class Handle:
+    def __init__(self, shutdown_corutine, stream):
+        self.shutdown = shutdown_corutine
+        self.stream = stream
+
+    def run_until_complete(self):
+        return self.shutdown
+
+    async def ping(self):
+        observer = PingObserver()
+        observer.start(self.stream.observable)
+
+        await self.stream.send(ping)
+        return await observer.got_response_in(seconds=3)
 
 
 class Orchestrator:
@@ -122,10 +145,16 @@ class Orchestrator:
 
         stream.observable.subscribe(receive, logger.critical, teardown)
 
-        done, pending = await asyncio.wait([shutdown_event.wait(), self._keepalive(stream)], return_when=concurrent.futures.FIRST_COMPLETED)
+        async def shutdown():
+            done, pending = await asyncio.wait([shutdown_event.wait(), self._keepalive(stream)], return_when=concurrent.futures.FIRST_COMPLETED)
 
-        for task in pending:
-            task.cancel()
+            for task in pending:
+                task.cancel()
+
+            return done
+
+        return Handle(shutdown(), stream)
+
 
     async def work(self, stream, msg):
         work_id = msg[Keys.WORK_ID]
