@@ -55,6 +55,8 @@ class Server:
 
     async def start_task(self, task, args, kwargs):
         worker = await self.find_worker(task)
+
+        logger.debug(f"Starting task {task.signature} on client {worker.name}")
         future = await worker.start(task, args, kwargs)
         return await future
 
