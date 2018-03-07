@@ -150,6 +150,7 @@ class Server:
             await client.stream.send(error("Server does not use this cion_interface"))
 
     async def work_done(self, client, msg):
+        logger.debug(f"Worker {client.name} returned result {msg}")
         await client.work_done(msg)
 
     async def recv_ping(self, client, msg):
