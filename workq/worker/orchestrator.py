@@ -178,6 +178,11 @@ class Orchestrator:
         await stream.send(work_result(work_id, result))
 
 
+    async def recv_ping(self, stream, msg):
+        logger.log(0, "Server sent ping.")
+
+
 dispatch_table = {
-    Types.DO_WORK: Orchestrator.work
+    Types.DO_WORK: Orchestrator.work,
+    Types.PING: Orchestrator.recv_ping
 }

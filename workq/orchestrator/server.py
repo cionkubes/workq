@@ -79,7 +79,8 @@ class Server:
 
                     while self.alive:
                         conn, peer = await self.loop.sock_accept(sock)
-                        asyncio.ensure_future(self.spawn_connection(conn, peer), loop=self.loop)
+                        asyncio.ensure_future(
+                            self.spawn_connection(conn, peer), loop=self.loop)
             except asyncio.CancelledError:
                 logger.info("Server stopped.")
             finally:
@@ -117,9 +118,11 @@ class Server:
 
                 await handler(self, client, msg)
         except ConnectionResetError:
-            logger.info(f"Client {client.addr}:{client.port} forcefully disconnected.")
+            logger.info(
+                f"Client {client.addr}:{client.port} forcefully disconnected.")
         except EOFError:
-            logger.info(f"Client {client.addr}:{client.port} disconnected gracefully.")
+            logger.info(
+                f"Client {client.addr}:{client.port} disconnected gracefully.")
         finally:
             self.disconnect_client(client)
 
@@ -154,7 +157,7 @@ class Server:
         await client.work_done(msg)
 
     async def recv_ping(self, client, msg):
-        logger.debug(f"Received keep-alive ping from client {client.name}")
+        logger.log(0, f"Received keep-alive ping from client {client.name}")
         await client.stream.send(ping)
 
 
