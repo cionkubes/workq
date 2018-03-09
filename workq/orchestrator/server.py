@@ -109,7 +109,13 @@ class Server:
 
         try:
             while True:
-                msg = await stream.decode()
+                try:
+                    msg = await stream.decode()
+                except ModuleNotFoundError:
+                    logger.exception(
+                        "Client {client.name} sent bad message. Look at client logs.")
+                    continue
+
                 try:
                     handler = dispatch_table[msg[Keys.TYPE]]
                 except KeyError:

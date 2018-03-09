@@ -32,8 +32,10 @@ class Client:
         try:
             future = self.futures.pop(msg[Keys.WORK_ID])
         except KeyError:
-            logger.error(f"Worker finished working on a cion_interface, but no such work was started by this orchestrator instance.")
-            logger.info(", ".join(map(lambda item: f"{item[0]}: {item[1]}", msg.items())))
+            logger.error(
+                f"Worker finished working on a cion_interface, but no such work was started by this orchestrator instance.")
+            logger.info(
+                ", ".join(map(lambda item: f"{item[0]}: {item[1]}", msg.items())))
             return
 
         if len(self.futures) <= 0:
@@ -44,7 +46,7 @@ class Client:
             return
 
         if Keys.WORK_EXC in msg:
-            future.set_exception(msg[Keys.WORK_EXC])
+            future.set_exception(WorkException(msg[Keys.WORK_EXC]))
         else:
             future.set_result(msg[Keys.WORK_RESULT])
 
@@ -54,6 +56,11 @@ class Client:
     @property
     def name(self):
         return f"{self.addr}:{self.port}"
+
+
+class WorkException(Exception):
+    def __init__(self, trace):
+        self.trace = trace
 
 
 class ClientState(IntEnum):

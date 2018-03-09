@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 import concurrent.futures
 
 from logzero import logger
@@ -155,31 +156,24 @@ class Orchestrator:
 
         return Handle(shutdown(), stream)
 
-
     async def work(self, stream, msg):
         work_id = msg[Keys.WORK_ID]
 
         task = self.tasks[msg[Keys.TASK]]
         args, kwargs = msg[Keys.ARGS], msg[Keys.KWARGS]
 
+        task = task.implementation(*args, **kwargs)
         try:
-            task = task.implementation(*args, **kwargs)
             result = await task
         except Exception as e:
-            if hasattr(task, 'exception') and task.exception():
-                await stream.send(work_failed(work_id, task.exception()))
-                logger.warning("Exception during work.\n%s", task.exception())
-            else:
-                await stream.send(work_failed(work_id, e))
-                logger.exception("Exception in work scheduling.")
-
+            logger.exception("Exception in work scheduling.")
+            await stream.send(work_failed(work_id, traceback.format_exc()))
             return
 
         await stream.send(work_result(work_id, result))
 
-
     async def recv_ping(self, stream, msg):
-        logger.log(0, "Server sent ping.")
+        logger.log(0, "Recived ping from server.")
 
 
 dispatch_table = {
