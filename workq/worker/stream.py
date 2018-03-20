@@ -56,6 +56,9 @@ class StreamWrapper:
     def close(self):
         self.socket.close()
 
+    def own_ip(self):
+        return self.socket.getsockname()[0]
+
     async def connect(self, addr, port):
         self.address = addr, port
         await self._connect()

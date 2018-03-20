@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from logzero import logger
 
-from .client import Client, ClientState
+from .client import Client, ClientState, ClientDisconnectedException
 from ..net.messages import Types, Keys, ok, error, ping
 from ..net.stream import Stream
 
@@ -54,11 +54,20 @@ class Server:
                 return await fut
 
     async def start_task(self, task, args, kwargs):
-        worker = await self.find_worker(task)
+        for try_num in range(3):
+            worker = await self.find_worker(task)
 
-        logger.debug(f"Starting task {task.signature} on client {worker.name}")
-        future = await worker.start(task, args, kwargs)
-        return await future
+            logger.debug(
+                f"Starting task {task.signature} on client {worker.name}")
+
+            try:
+                return await worker.start(task, args, kwargs)
+            except ClientDisconnectedException:
+                continue  # Find new worker to restart task on
+
+        arglist = list(args)
+        arglist.extend(f"{kw}={val}" for kw, val in kwargs.iter())
+        raise Exception(f"Aborting task {task}({', '.join(arglist)})")
 
     def run(self, addr, port, certs=None):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

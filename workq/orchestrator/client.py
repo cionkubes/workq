@@ -23,7 +23,7 @@ class Client:
         self.futures[work_id] = asyncio.get_event_loop().create_future()
 
         await self.stream.send(start_work(work_id, task, args, kwargs))
-        return self.futures[work_id]
+        return await self.futures[work_id]
 
     def supports(self, interface):
         self.supported_interfaces.append(interface)
@@ -51,7 +51,8 @@ class Client:
             future.set_result(msg[Keys.WORK_RESULT])
 
     def disconnected(self):
-        pass
+        for future in self.futures.values():
+            future.set_exception(ClientDisconnectedException())
 
     @property
     def name(self):
@@ -61,6 +62,10 @@ class Client:
 class WorkException(Exception):
     def __init__(self, trace):
         self.trace = trace
+
+
+class ClientDisconnectedException(Exception):
+    pass
 
 
 class ClientState(IntEnum):

@@ -49,6 +49,9 @@ class Handle:
     def run_until_complete(self):
         return self.shutdown
 
+    def own_ip(self):
+        return self.stream.own_ip()
+
     async def ping(self):
         observer = PingObserver()
         observer.start(self.stream.observable)
